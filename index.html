@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cricket Akinator — The Pitch Oracle (350+ Player Local Engine)</title>
+  <meta name="description" content="A token-efficient, 100% local attribute-filtered Cricket Akinator game with 350+ international cricketers and custom game modes. Think of any player and let the Oracle guess!" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* CHANGE 5: Preserve all existing dark glassmorphic UI aesthetics & styles */
+    :root {
+      --bg-dark: #070a12;
+      --bg-card: rgba(15, 23, 42, 0.75);
+      --bg-card-hover: rgba(30, 41, 59, 0.85);
+      --bg-glass: rgba(255, 255, 255, 0.04);
+      --border-glass: rgba(255, 255, 255, 0.12);
+      
+      --pitch-green: #10b981;
+      --pitch-emerald: #059669;
+      --accent-gold: #f59e0b;
+      --accent-cyan: #06b6d4;
+      --accent-rose: #f43f5e;
+      --accent-purple: #a855f7;
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --glow-emerald: 0 0 35px rgba(16, 185, 129, 0.35);
+      --glow-gold: 0 0 35px rgba(245, 158, 11, 0.35);
+      --glow-cyan: 0 0 35px rgba(6, 182, 212, 0.35);
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Ambient Canvases */
+    #particle-canvas, #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+    }
+    #particle-canvas { z-index: 0; }
+    #confetti-canvas { z-index: 999; }
+
+    /* Header Nav */
+    header {
+      width: 100%;
+      max-width: 1050px;
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+
+    .brand-icon {
+      font-size: 32px;
+      filter: drop-shadow(0 0 12px var(--pitch-green));
+      animation: floatSlow 3.5s ease-in-out infinite;
+    }
+
+    .brand-title {
+      font-family: 'Cinzel', serif;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, #ffffff 30%, #34d399 70%, #f59e0b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .provider-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #6ee7b7;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .provider-badge:hover {
+      background: rgba(16, 185, 129, 0.22);
+      border-color: var(--pitch-green);
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);
+    }
+    .provider-badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--pitch-green);
+      box-shadow: 0 0 8px var(--pitch-green);
+    }
+
+    .icon-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      color: var(--text-muted);
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(12px);
+    }
+    .icon-btn:hover {
+      color: var(--text-main);
+      border-color: var(--pitch-green);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+    }
+
+    /* Main Area */
+    main {
+      width: 100%;
+      max-width: 840px;
+      padding: 12px 20px 28px 20px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .screen {
+      display: none;
+      width: 100%;
+      flex-direction: column;
+      align-items: center;
+      animation: fadeIn 0.4s ease forwards;
+    }
+    .screen.active {
+      display: flex;
+    }
+
+    /* Card Box */
+    .glass-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-xl);
+      padding: 32px 28px;
+      width: 100%;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      position: relative;
+      overflow: hidden;
+    }
+    .glass-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--pitch-green), var(--accent-gold), transparent);
+    }
+
+    /* Setup Screen */
+    .hero-title {
+      font-family: 'Cinzel', serif;
+      font-size: 32px;
+      font-weight: 900;
+      text-align: center;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff 40%, #a7f3d0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 15px;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 540px;
+      margin: 0 auto 28px auto;
+      line-height: 1.6;
+    }
+
+    .oracle-avatar-wrap {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 24px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .oracle-glow {
+      position: absolute;
+      inset: -10px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(16,185,129,0.35) 0%, rgba(245,158,11,0.1) 70%, transparent 100%);
+      filter: blur(16px);
+      animation: pulseGlow 3.5s ease-in-out infinite alternate;
+    }
+
+    .oracle-sphere {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #34d399, #059669 40%, #064e3b 80%, #022c22 100%);
+      border: 2px solid rgba(255,255,255,0.3);
+      box-shadow: var(--glow-emerald);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 46px;
+      z-index: 2;
+    }
+
+    .pool-selectors {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 28px;
+      width: 100%;
+    }
+
+    .pool-btn {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border-glass);
+      padding: 14px 12px;
+      border-radius: var(--radius-md);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .pool-btn:hover {
+      background: rgba(255,255,255,0.08);
+      color: var(--text-main);
+      border-color: rgba(16,185,129,0.4);
+    }
+    .pool-btn.active {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: var(--pitch-green);
+      color: #6ee7b7;
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.25);
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #042f2e;
+      font-weight: 800;
+      font-size: 17px;
+      letter-spacing: 0.5px;
+      padding: 16px 36px;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.25s ease;
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 auto;
+    }
+    .primary-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(16, 185, 129, 0.5);
+      background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+    }
+
+    /* Game Screen */
+    .game-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+
+    .q-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--pitch-green);
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 6px 14px;
+      border-radius: 999px;
+    }
+
+    .candidate-hint-badge {
+      font-size: 12px;
+      color: var(--accent-gold);
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 28px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #10b981, #f59e0b);
+      transition: width 0.4s ease;
+      border-radius: 999px;
+    }
+
+    .question-box {
+      min-height: 110px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 0 12px;
+      margin-bottom: 28px;
+    }
+
+    .question-text {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.4;
+      color: #fff;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+
+    /* CHANGE 5: Preserve 5-choice answer buttons UI */
+    .answers-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      width: 100%;
+      margin-bottom: 24px;
+    }
+
+    .answer-btn {
+      padding: 14px 6px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-glass);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-main);
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.18s ease;
+    }
+    .answer-btn .key-hint {
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-dim);
+      background: rgba(255,255,255,0.06);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .answer-btn[data-ans="yes"]:hover {
+      background: rgba(16, 185, 129, 0.25);
+      border-color: var(--pitch-green);
+      color: #6ee7b7;
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+    }
+    .answer-btn[data-ans="probably"]:hover {
+      background: rgba(52, 211, 153, 0.2);
+      border-color: #34d399;
+      color: #a7f3d0;
+    }
+    .answer-btn[data-ans="dont_know"]:hover {
+      background: rgba(6, 182, 212, 0.2);
+      border-color: var(--accent-cyan);
+      color: #7dd3fc;
+    }
+    .answer-btn[data-ans="probably_not"]:hover {
+      background: rgba(249, 115, 22, 0.2);
+      border-color: #f97316;
+      color: #ffedd5;
+    }
+    .answer-btn[data-ans="no"]:hover {
+      background: rgba(244, 63, 94, 0.25);
+      border-color: var(--accent-rose);
+      color: #fecdd3;
+      box-shadow: 0 4px 16px rgba(244, 63, 94, 0.3);
+    }
+
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding-top: 16px;
+    }
+
+    .sub-btn {
+      background: transparent;
+      border: 1px solid var(--border-glass);
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .sub-btn:hover {
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+    }
+    .sub-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    /* Guess Screen */
+    .guess-card-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .guess-title {
+      font-family: 'Cinzel', serif;
+      font-size: 20px;
+      color: var(--accent-gold);
+      margin-bottom: 20px;
+      letter-spacing: 1px;
+    }
+
+    .player-avatar-large {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--accent-gold);
+      box-shadow: var(--glow-gold);
+      margin-bottom: 16px;
+      background: #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 50px;
+    }
+
+    .player-name-reveal {
+      font-size: 28px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .player-meta-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .meta-tag {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border-glass);
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .guess-actions {
+      display: flex;
+      gap: 16px;
+      width: 100%;
+      max-width: 420px;
+      justify-content: center;
+    }
+
+    .confirm-btn {
+      flex: 1;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #042f2e;
+      font-weight: 800;
+      padding: 14px;
+      border-radius: var(--radius-md);
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(16,185,129,0.3);
+      transition: all 0.2s ease;
+    }
+    .confirm-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(16,185,129,0.5);
+    }
+
+    .deny-btn {
+      flex: 1;
+      background: linear-gradient(135deg, #f43f5e, #e11d48);
+      color: #fff;
+      font-weight: 800;
+      padding: 14px;
+      border-radius: var(--radius-md);
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(244,63,94,0.3);
+      transition: all 0.2s ease;
+    }
+    .deny-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(244,63,94,0.5);
+    }
+
+    /* Result Screens (Victory & Defeat) */
+    .result-icon {
+      font-size: 64px;
+      margin-bottom: 12px;
+    }
+
+    .result-heading {
+      font-family: 'Cinzel', serif;
+      font-size: 30px;
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+    .victory-text { color: var(--accent-gold); }
+    .defeat-text { color: var(--accent-rose); }
+
+    .stat-pills-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin: 20px 0 28px 0;
+    }
+    .stat-pill {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-glass);
+      padding: 10px 18px;
+      border-radius: var(--radius-md);
+      text-align: center;
+    }
+    .stat-pill .val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .stat-pill .lbl {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Add Custom Player Form */
+    .add-player-card {
+      width: 100%;
+      max-width: 500px;
+      margin: 20px auto;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      text-align: left;
+    }
+
+    .add-player-card .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .custom-input {
+      width: 100%;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--border-glass);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+    }
+    .custom-input:focus {
+      border-color: var(--pitch-green);
+    }
+
+    /* Modal Backdrop & Cards */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+    .modal-card {
+      background: #0f172a;
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 520px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.8);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: 12px;
+    }
+    .modal-title {
+      font-family: 'Cinzel', serif;
+      font-size: 18px;
+      color: #fff;
+    }
+
+    /* Footer */
+    footer {
+      padding: 18px;
+      font-size: 12px;
+      color: var(--text-dim);
+      text-align: center;
+      z-index: 10;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    @keyframes pulseGlow {
+      0% { opacity: 0.4; transform: scale(0.95); }
+      100% { opacity: 0.9; transform: scale(1.05); }
+    }
+
+    @media (max-width: 640px) {
+      .pool-selectors { grid-template-columns: repeat(2, 1fr); }
+      .answers-grid { grid-template-columns: repeat(2, 1fr); }
+      .answers-grid .answer-btn:last-child { grid-column: span 2; }
+      .hero-title { font-size: 24px; }
+      .question-text { font-size: 18px; }
+      .add-player-card .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background Canvases -->
+  <canvas id="particle-canvas"></canvas>
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- Header Nav -->
+  <header>
+    <div class="brand" id="brand-logo">
+      <div class="brand-icon">🏏</div>
+      <div class="brand-title">CRICKET AKINATOR</div>
+    </div>
+    <div class="header-actions">
+      <div class="provider-badge" id="provider-badge">
+        <span class="dot"></span>
+        <span id="provider-name-text">Engine: 100% Local Filter (0 Tokens)</span>
+      </div>
+      <button class="icon-btn" id="sound-btn" title="Toggle Sound">🔊</button>
+      <button class="icon-btn" id="telemetry-btn" title="Inspect Local State">👁️</button>
+      <button class="icon-btn" id="settings-btn" title="Settings">⚙️</button>
+    </div>
+  </header>
+
+  <!-- Main View Area -->
+  <main>
+    <div class="glass-card">
+
+      <!-- SCREEN 1: SETUP -->
+      <section id="screen-setup" class="screen active">
+        <div class="oracle-avatar-wrap">
+          <div class="oracle-glow"></div>
+          <div class="oracle-sphere">🧙‍♂️</div>
+        </div>
+        <h1 class="hero-title">Think of Any Cricketer!</h1>
+        <p class="hero-subtitle">
+          Select a specialized game mode below. Answer my yes/no questions and the Pitch Oracle will read your mind!
+        </p>
+
+        <!-- SPECIALIZED GAME MODES SELECTOR -->
+        <div class="pool-selectors">
+          <button class="pool-btn active" data-pool="all">
+            <span>🌐 All-Star Mode</span>
+            <small style="font-size:11px; opacity:0.7">All Players (350+)</small>
+          </button>
+          <button class="pool-btn" data-pool="world_cup">
+            <span>🏆 World Cup Winners</span>
+            <small style="font-size:11px; opacity:0.7">ODI & T20 Champions</small>
+          </button>
+          <button class="pool-btn" data-pool="ipl">
+            <span>💛 IPL & T20 Stars</span>
+            <small style="font-size:11px; opacity:0.7">Franchise League Icons</small>
+          </button>
+          <button class="pool-btn" data-pool="speed_run">
+            <span>⚡ Speed Run (10-Q)</span>
+            <small style="font-size:11px; opacity:0.7">Fast 10-Question Cap</small>
+          </button>
+          <button class="pool-btn" data-pool="legends">
+            <span>🏛️ Retired Legends</span>
+            <small style="font-size:11px; opacity:0.7">Hall of Fame</small>
+          </button>
+          <button class="pool-btn" data-pool="womens">
+            <span>👩 Women's Special</span>
+            <small style="font-size:11px; opacity:0.7">International Women</small>
+          </button>
+        </div>
+
+        <button class="primary-btn" id="start-game-btn">
+          <span>START THE ORACLE GAME</span>
+          <span>⚡</span>
+        </button>
+      </section>
+
+      <!-- SCREEN 2: GAMEPLAY -->
+      <section id="screen-game" class="screen">
+        <div class="game-header-bar">
+          <div class="q-badge" id="q-counter-badge">Question 1 of ~18</div>
+          <div class="candidate-hint-badge" id="candidate-count-badge">Candidate Pool: 350+</div>
+        </div>
+
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+
+        <div class="question-box">
+          <div class="question-text" id="question-text">
+            Is the player a male cricketer?
+          </div>
+        </div>
+
+        <!-- 5-choice answer buttons -->
+        <div class="answers-grid">
+          <button class="answer-btn" data-ans="yes">
+            <span>YES</span>
+            <span class="key-hint">[ 1 / Y ]</span>
+          </button>
+          <button class="answer-btn" data-ans="probably">
+            <span>PROBABLY</span>
+            <span class="key-hint">[ 2 / P ]</span>
+          </button>
+          <button class="answer-btn" data-ans="dont_know">
+            <span>DON'T KNOW</span>
+            <span class="key-hint">[ 3 / D ]</span>
+          </button>
+          <button class="answer-btn" data-ans="probably_not">
+            <span>PROBABLY NOT</span>
+            <span class="key-hint">[ 4 / N ]</span>
+          </button>
+          <button class="answer-btn" data-ans="no">
+            <span>NO</span>
+            <span class="key-hint">[ 5 / X ]</span>
+          </button>
+        </div>
+
+        <div class="controls-row">
+          <button class="sub-btn" id="btn-undo" disabled>
+            <span>↩️ Undo</span>
+          </button>
+          <button class="sub-btn" id="btn-restart">
+            <span>🔄 Start Over</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- SCREEN 3: GUESS -->
+      <section id="screen-guess" class="screen">
+        <div class="guess-card-content">
+          <div class="guess-title">✨ THE ORACLE IS READY TO GUESS! ✨</div>
+          
+          <div class="player-avatar-large" id="guess-avatar">🏏</div>
+          <div class="player-name-reveal" id="guess-player-name">Sachin Tendulkar</div>
+          
+          <div class="player-meta-tags" id="guess-player-tags">
+            <span class="meta-tag">🇮🇳 India</span>
+            <span class="meta-tag">Batter</span>
+            <span class="meta-tag">Hall of Famer</span>
+          </div>
+
+          <p style="color: var(--text-muted); margin-bottom: 24px; font-size: 15px;">
+            Is this the cricketer you are thinking of?
+          </p>
+
+          <div class="guess-actions">
+            <button class="confirm-btn" id="btn-guess-yes">YES, THAT'S THEM!</button>
+            <button class="deny-btn" id="btn-guess-no">NO, WRONG GUESS!</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCREEN 4: VICTORY -->
+      <section id="screen-victory" class="screen">
+        <div style="text-align:center;">
+          <div class="result-icon">🏆</div>
+          <h2 class="result-heading victory-text">VICTORY FOR THE ORACLE!</h2>
+          <p style="color: var(--text-muted); font-size: 15px; max-width: 480px; margin: 0 auto;">
+            The Pitch Oracle correctly identified your player using pure local attribute entropy!
+          </p>
+
+          <div class="stat-pills-row">
+            <div class="stat-pill">
+              <div class="val" id="stat-questions-count">7</div>
+              <div class="lbl">Questions Used</div>
+            </div>
+            <div class="stat-pill">
+              <div class="val" id="stat-final-player">Virat Kohli</div>
+              <div class="lbl">Cricketer Identified</div>
+            </div>
+          </div>
+
+          <button class="primary-btn" id="btn-play-again-win">
+            <span>PLAY AGAIN</span>
+            <span>⚡</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- SCREEN 5: DEFEAT / REVEAL + ADD PLAYER FORM -->
+      <section id="screen-defeat" class="screen">
+        <div style="text-align:center; width: 100%;">
+          <div class="result-icon">🧙‍♂️💡</div>
+          <h2 class="result-heading defeat-text">YOU STUMPED THE ORACLE!</h2>
+          <p style="color: var(--text-muted); font-size: 15px; max-width: 520px; margin: 0 auto 16px auto;">
+            The Oracle could not find your player in its 350+ player database! Add them below so the Oracle learns for next time.
+          </p>
+
+          <div class="add-player-card">
+            <div style="font-weight:700; color:#fff; font-size:15px; margin-bottom:10px;">
+              ➕ Add Player to Database
+            </div>
+            <div class="form-grid">
+              <input type="text" id="new-player-name" class="custom-input" placeholder="Player Full Name *" />
+              <select id="new-player-country" class="custom-input">
+                <option value="India">India 🇮🇳</option>
+                <option value="Australia">Australia 🇦🇺</option>
+                <option value="England">England 🏴󠁧󠁢󠁥󠁮󠁧󠁿</option>
+                <option value="Pakistan">Pakistan 🇵🇰</option>
+                <option value="West Indies">West Indies 🌴</option>
+                <option value="South Africa">South Africa 🇿🇦</option>
+                <option value="Sri Lanka">Sri Lanka 🇱🇰</option>
+                <option value="New Zealand">New Zealand 🇳🇿</option>
+                <option value="Afghanistan">Afghanistan 🇦🇫</option>
+                <option value="Bangladesh">Bangladesh 🇧🇩</option>
+                <option value="Zimbabwe">Zimbabwe 🇿🇼</option>
+                <option value="Ireland">Ireland 🇮🇪</option>
+              </select>
+              <select id="new-player-gender" class="custom-input">
+                <option value="men">Men's Cricket</option>
+                <option value="women">Women's Cricket</option>
+              </select>
+              <select id="new-player-role" class="custom-input">
+                <option value="batter">Batter</option>
+                <option value="bowler">Bowler</option>
+                <option value="all_rounder">All-Rounder</option>
+                <option value="keeper">Wicketkeeper</option>
+              </select>
+              <select id="new-player-status" class="custom-input">
+                <option value="active">Currently Active</option>
+                <option value="retired">Retired</option>
+              </select>
+              <select id="new-player-bowling" class="custom-input">
+                <option value="pace">Pace / Fast Bowler</option>
+                <option value="spin">Spin Bowler</option>
+                <option value="none">Does Not Bowl</option>
+              </select>
+            </div>
+            <button class="primary-btn" id="btn-save-new-player" style="width:100%; margin-top:14px; padding:12px; font-size:14px; justify-content:center;">
+              Save Player to Database
+            </button>
+            <div id="add-player-success" style="display:none; color:var(--pitch-green); font-size:12px; margin-top:10px; text-align:center;">
+              ✓ Player saved to database & localStorage successfully!
+            </div>
+          </div>
+
+          <button class="primary-btn" id="btn-play-again-defeat" style="margin-top:12px;">
+            <span>PLAY AGAIN</span>
+            <span>⚡</span>
+          </button>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    Cricket Akinator • 350+ Player Local Entropy Engine • Specialized Game Modes
+  </footer>
+
+  <!-- SETTINGS MODAL -->
+  <div class="modal-backdrop" id="modal-settings">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">⚙️ Engine & API Settings</div>
+        <button class="sub-btn" id="btn-close-settings">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Phasing Engine (Token Control)</label>
+        <select id="setting-phrasing-mode" class="custom-input" style="width:100%;">
+          <option value="local">Local Template Phrasing (0 Tokens - Recommended)</option>
+          <option value="llm">LLM Natural Phrasing (~40 Tokens / Turn)</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="group-gemini-key" style="display:none;">
+        <label class="form-label">Gemini API Key (Optional)</label>
+        <input type="password" id="setting-gemini-key" class="custom-input" placeholder="AIzaSy..." />
+        <small style="color:var(--text-dim); display:block; margin-top:4px;">
+          Only required if LLM Natural Phrasing is enabled. Stored locally.
+        </small>
+      </div>
+
+      <button class="primary-btn" id="btn-save-settings" style="width:100%; justify-content:center;">
+        Save Settings
+      </button>
+    </div>
+  </div>
+
+  <!-- TELEMETRY MODAL -->
+  <div class="modal-backdrop" id="modal-telemetry">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">👁️ Local State & Candidate Inspector</div>
+        <button class="sub-btn" id="btn-close-telemetry">✕</button>
+      </div>
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
+        Real-time candidate pool and entropy state:
+      </p>
+      <pre id="telemetry-json-view" style="font-family:'JetBrains Mono',monospace; font-size:11px; background:rgba(0,0,0,0.5); padding:12px; border-radius:8px; border:1px solid var(--border-glass); color:#6ee7b7; max-height:300px; overflow-y:auto; whitespace:pre-wrap;"></pre>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT ENGINE -->
+  <script>
+    /* =========================================================
+       CHANGE 1: EXPANDED LOCAL PLAYER DATABASE (350+ PLAYERS)
+       ========================================================= */
+    const BASE_PLAYER_DATABASE = [
+      // --- INDIA (MEN) ---
+      { id: 'sachin_tendulkar', name: 'Sachin Tendulkar', country: 'India', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'right', bowling_style: 'spin', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['10k_runs', '100_centuries'] },
+      { id: 'ms_dhoni', name: 'MS Dhoni', country: 'India', gender: 'men', status: 'retired', role: 'keeper', batting_hand: 'right', bowling_style: 'none', era: '2000s_2010s', formats: ['ODI', 'T20I', 'Test'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['10k_runs', 'ipl_trophy'] },
+      { id: 'virat_kohli', name: 'Virat Kohli', country: 'India', gender: 'men', status: 'active', role: 'batter', batting_hand: 'right', bowling_style: 'none', era: 'active_now', formats: ['Test', 'ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['10k_runs'] },
+      { id: 'rohit_sharma', name: 'Rohit Sharma', country: 'India', gender: 'men', status: 'active', role: 'batter', batting_hand: 'right', bowling_style: 'none', era: 'active_now', formats: ['Test', 'ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['10k_runs', 'ipl_trophy', 'double_century'] },
+      { id: 'jasprit_bumrah', name: 'Jasprit Bumrah', country: 'India', gender: 'men', status: 'active', role: 'bowler', batting_hand: 'right', bowling_style: 'pace', era: 'active_now', formats: ['Test', 'ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['ipl_trophy'] },
+      { id: 'kapil_dev', name: 'Kapil Dev', country: 'India', gender: 'men', status: 'retired', role: 'all_rounder', batting_hand: 'right', bowling_style: 'pace', era: 'pre_2000', formats: ['Test', 'ODI'], is_captain: true, played_ipl: false, world_cup_winner: true, stat_flags: ['400_wickets'] },
+      { id: 'rahul_dravid', name: 'Rahul Dravid', country: 'India', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'right', bowling_style: 'none', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: false, stat_flags: ['10k_runs'] },
+      { id: 'sourav_ganguly', name: 'Sourav Ganguly', country: 'India', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'left', bowling_style: 'pace', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: false, stat_flags: ['10k_runs'] },
+      { id: 'anil_kumble', name: 'Anil Kumble', country: 'India', gender: 'men', status: 'retired', role: 'bowler', batting_hand: 'right', bowling_style: 'spin', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: false, stat_flags: ['500_wickets', '10_wickets_in_innings'] },
+      { id: 'ravindra_jadeja', name: 'Ravindra Jadeja', country: 'India', gender: 'men', status: 'active', role: 'all_rounder', batting_hand: 'left', bowling_style: 'spin', era: 'active_now', formats: ['Test', 'ODI', 'T20I'], is_captain: false, played_ipl: true, world_cup_winner: true, stat_flags: ['ipl_trophy'] },
+      { id: 'ravichandran_ashwin', name: 'Ravichandran Ashwin', country: 'India', gender: 'men', status: 'active', role: 'all_rounder', batting_hand: 'right', bowling_style: 'spin', era: 'active_now', formats: ['Test', 'ODI'], is_captain: false, played_ipl: true, world_cup_winner: true, stat_flags: ['500_wickets', 'ipl_trophy'] },
+      { id: 'yuvraj_singh', name: 'Yuvraj Singh', country: 'India', gender: 'men', status: 'retired', role: 'all_rounder', batting_hand: 'left', bowling_style: 'spin', era: '2000s_2010s', formats: ['ODI', 'T20I'], is_captain: false, played_ipl: true, world_cup_winner: true, stat_flags: ['6_sixes_in_over', 'ipl_trophy'] },
+      { id: 'sunil_gavaskar', name: 'Sunil Gavaskar', country: 'India', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'right', bowling_style: 'none', era: 'pre_2000', formats: ['Test', 'ODI'], is_captain: true, played_ipl: false, world_cup_winner: true, stat_flags: ['10k_runs'] },
+      { id: 'virender_sehwag', name: 'Virender Sehwag', country: 'India', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'right', bowling_style: 'spin', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['triple_century', 'double_century'] },
+      { id: 'zaheer_khan', name: 'Zaheer Khan', country: 'India', gender: 'men', status: 'retired', role: 'bowler', batting_hand: 'right', bowling_style: 'pace', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: false, played_ipl: true, world_cup_winner: true, stat_flags: [] },
+      { id: 'vvs_laxman', name: 'VVS Laxman', country: 'India', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'right', bowling_style: 'none', era: '2000s_2010s', formats: ['Test'], is_captain: false, played_ipl: true, world_cup_winner: false, stat_flags: ['281_score'] },
+      { id: 'gautam_gambhir', name: 'Gautam Gambhir', country: 'India', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'left', bowling_style: 'none', era: '2000s_2010s', formats: ['Test', 'ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['ipl_trophy'] },
+      { id: 'harbhajan_singh', name: 'Harbhajan Singh', country: 'India', gender: 'men', status: 'retired', role: 'bowler', batting_hand: 'right', bowling_style: 'spin', era: '2000s_2010s', formats: ['Test', 'ODI', 'T20I'], is_captain: false, played_ipl: true, world_cup_winner: true, stat_flags: ['400_wickets', 'hat_trick', 'ipl_trophy'] },
+      { id: 'mohammad_shami', name: 'Mohammad Shami', country: 'India', gender: 'men', status: 'active', role: 'bowler', batting_hand: 'right', bowling_style: 'pace', era: 'active_now', formats: ['Test', 'ODI'], is_captain: false, played_ipl: true, world_cup_winner: false, stat_flags: ['hat_trick'] },
+      { id: 'rishabh_pant', name: 'Rishabh Pant', country: 'India', gender: 'men', status: 'active', role: 'keeper', batting_hand: 'left', bowling_style: 'none', era: 'active_now', formats: ['Test', 'ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: [] },
+      { id: 'hardik_pandya', name: 'Hardik Pandya', country: 'India', gender: 'men', status: 'active', role: 'all_rounder', batting_hand: 'right', bowling_style: 'pace', era: 'active_now', formats: ['ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['ipl_trophy'] },
+      { id: 'suryakumar_yadav', name: 'Suryakumar Yadav', country: 'India', gender: 'men', status: 'active', role: 'batter', batting_hand: 'right', bowling_style: 'none', era: 'active_now', formats: ['T20I'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['ipl_trophy'] },
+      { id: 'shubman_gill', name: 'Shubman Gill', country: 'India', gender: 'men', status: 'active', role: 'batter', batting_hand: 'right', bowling_style: 'none', era: 'active_now', formats: ['Test', 'ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: false, stat_flags: ['double_century'] },
+
+      // --- INDIA (WOMEN) ---
+      { id: 'mithali_raj', name: 'Mithali Raj', country: 'India', gender: 'women', status: 'retired', role: 'batter', batting_hand: 'right', bowling_style: 'none', era: '2000s_2010s', formats: ['ODI', 'Test'], is_captain: true, played_ipl: false, world_cup_winner: false, stat_flags: ['10k_runs'] },
+      { id: 'harmanpreet_kaur', name: 'Harmanpreet Kaur', country: 'India', gender: 'women', status: 'active', role: 'all_rounder', batting_hand: 'right', bowling_style: 'spin', era: 'active_now', formats: ['ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: false, stat_flags: ['wpl_trophy'] },
+      { id: 'smriti_mandhana', name: 'Smriti Mandhana', country: 'India', gender: 'women', status: 'active', role: 'batter', batting_hand: 'left', bowling_style: 'none', era: 'active_now', formats: ['ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: false, stat_flags: ['wpl_trophy'] },
+      { id: 'jhulan_goswami', name: 'Jhulan Goswami', country: 'India', gender: 'women', status: 'retired', role: 'bowler', batting_hand: 'right', bowling_style: 'pace', era: '2000s_2010s', formats: ['ODI', 'Test'], is_captain: true, played_ipl: false, world_cup_winner: false, stat_flags: [] },
+
+      // --- AUSTRALIA (MEN) ---
+      { id: 'ricky_ponting', name: 'Ricky Ponting', country: 'Australia', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'right', bowling_style: 'none', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['10k_runs'] },
+      { id: 'shane_warne', name: 'Shane Warne', country: 'Australia', gender: 'men', status: 'retired', role: 'bowler', batting_hand: 'right', bowling_style: 'spin', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: false, played_ipl: true, world_cup_winner: true, stat_flags: ['500_wickets', 'ipl_trophy'] },
+      { id: 'glenn_mcgrath', name: 'Glenn McGrath', country: 'Australia', gender: 'men', status: 'retired', role: 'bowler', batting_hand: 'right', bowling_style: 'pace', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: false, played_ipl: true, world_cup_winner: true, stat_flags: ['500_wickets'] },
+      { id: 'steve_smith', name: 'Steve Smith', country: 'Australia', gender: 'men', status: 'active', role: 'batter', batting_hand: 'right', bowling_style: 'spin', era: 'active_now', formats: ['Test', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['10k_runs'] },
+      { id: 'david_warner', name: 'David Warner', country: 'Australia', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'left', bowling_style: 'none', era: 'active_now', formats: ['Test', 'ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['10k_runs', 'ipl_trophy'] },
+      { id: 'mitchell_starc', name: 'Mitchell Starc', country: 'Australia', gender: 'men', status: 'active', role: 'bowler', batting_hand: 'left', bowling_style: 'pace', era: 'active_now', formats: ['Test', 'ODI', 'T20I'], is_captain: false, played_ipl: true, world_cup_winner: true, stat_flags: ['ipl_trophy'] },
+      { id: 'pat_cummins', name: 'Pat Cummins', country: 'Australia', gender: 'men', status: 'active', role: 'bowler', batting_hand: 'right', bowling_style: 'pace', era: 'active_now', formats: ['Test', 'ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['ipl_trophy'] },
+      { id: 'adam_gilchrist', name: 'Adam Gilchrist', country: 'Australia', gender: 'men', status: 'retired', role: 'keeper', batting_hand: 'left', bowling_style: 'none', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['10k_runs', 'ipl_trophy'] },
+      { id: 'allan_border', name: 'Allan Border', country: 'Australia', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'left', bowling_style: 'spin', era: 'pre_2000', formats: ['Test', 'ODI'], is_captain: true, played_ipl: false, world_cup_winner: true, stat_flags: ['10k_runs'] },
+      { id: 'don_bradman', name: 'Don Bradman', country: 'Australia', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'right', bowling_style: 'none', era: 'pre_2000', formats: ['Test'], is_captain: true, played_ipl: false, world_cup_winner: false, stat_flags: ['99_94_average'] },
+
+      // --- AUSTRALIA (WOMEN) ---
+      { id: 'ellyse_perry', name: 'Ellyse Perry', country: 'Australia', gender: 'women', status: 'active', role: 'all_rounder', batting_hand: 'right', bowling_style: 'pace', era: 'active_now', formats: ['Test', 'ODI', 'T20I'], is_captain: false, played_ipl: true, world_cup_winner: true, stat_flags: ['wpl_trophy'] },
+      { id: 'meg_lanning', name: 'Meg Lanning', country: 'Australia', gender: 'women', status: 'retired', role: 'batter', batting_hand: 'right', bowling_style: 'none', era: '2000s_2010s', formats: ['ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: [] },
+      { id: 'alyssa_healy', name: 'Alyssa Healy', country: 'Australia', gender: 'women', status: 'active', role: 'keeper', batting_hand: 'right', bowling_style: 'none', era: 'active_now', formats: ['ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: [] },
+
+      // --- ENGLAND (MEN) ---
+      { id: 'joe_root', name: 'Joe Root', country: 'England', gender: 'men', status: 'active', role: 'batter', batting_hand: 'right', bowling_style: 'spin', era: 'active_now', formats: ['Test', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['10k_runs'] },
+      { id: 'james_anderson', name: 'James Anderson', country: 'England', gender: 'men', status: 'retired', role: 'bowler', batting_hand: 'left', bowling_style: 'pace', era: '2000s_2010s', formats: ['Test'], is_captain: false, played_ipl: false, world_cup_winner: false, stat_flags: ['500_wickets', '700_wickets'] },
+      { id: 'stuart_broad', name: 'Stuart Broad', country: 'England', gender: 'men', status: 'retired', role: 'bowler', batting_hand: 'left', bowling_style: 'pace', era: '2000s_2010s', formats: ['Test'], is_captain: true, played_ipl: true, world_cup_winner: false, stat_flags: ['500_wickets', '600_wickets'] },
+      { id: 'ben_stokes', name: 'Ben Stokes', country: 'England', gender: 'men', status: 'active', role: 'all_rounder', batting_hand: 'left', bowling_style: 'pace', era: 'active_now', formats: ['Test', 'ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['ipl_trophy'] },
+      { id: 'alastair_cook', name: 'Alastair Cook', country: 'England', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'left', bowling_style: 'none', era: '2000s_2010s', formats: ['Test'], is_captain: true, played_ipl: false, world_cup_winner: false, stat_flags: ['10k_runs'] },
+      { id: 'jos_buttler', name: 'Jos Buttler', country: 'England', gender: 'men', status: 'active', role: 'keeper', batting_hand: 'right', bowling_style: 'none', era: 'active_now', formats: ['ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['ipl_trophy'] },
+
+      // --- PAKISTAN (MEN) ---
+      { id: 'wasim_akram', name: 'Wasim Akram', country: 'Pakistan', gender: 'men', status: 'retired', role: 'bowler', batting_hand: 'left', bowling_style: 'pace', era: 'pre_2000', formats: ['Test', 'ODI'], is_captain: true, played_ipl: false, world_cup_winner: true, stat_flags: ['500_wickets'] },
+      { id: 'waqar_younis', name: 'Waqar Younis', country: 'Pakistan', gender: 'men', status: 'retired', role: 'bowler', batting_hand: 'right', bowling_style: 'pace', era: 'pre_2000', formats: ['Test', 'ODI'], is_captain: true, played_ipl: false, world_cup_winner: false, stat_flags: ['400_wickets'] },
+      { id: 'imran_khan', name: 'Imran Khan', country: 'Pakistan', gender: 'men', status: 'retired', role: 'all_rounder', batting_hand: 'right', bowling_style: 'pace', era: 'pre_2000', formats: ['Test', 'ODI'], is_captain: true, played_ipl: false, world_cup_winner: true, stat_flags: ['300_wickets'] },
+      { id: 'babar_azam', name: 'Babar Azam', country: 'Pakistan', gender: 'men', status: 'active', role: 'batter', batting_hand: 'right', bowling_style: 'none', era: 'active_now', formats: ['Test', 'ODI', 'T20I'], is_captain: true, played_ipl: false, world_cup_winner: false, stat_flags: ['10k_runs'] },
+      { id: 'shahid_afridi', name: 'Shahid Afridi', country: 'Pakistan', gender: 'men', status: 'retired', role: 'all_rounder', batting_hand: 'right', bowling_style: 'spin', era: '2000s_2010s', formats: ['ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['37_ball_century'] },
+      { id: 'shoaib_akhtar', name: 'Shoaib Akhtar', country: 'Pakistan', gender: 'men', status: 'retired', role: 'bowler', batting_hand: 'right', bowling_style: 'pace', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: false, played_ipl: true, world_cup_winner: false, stat_flags: ['fastest_ball_161k'] },
+
+      // --- WEST INDIES (MEN) ---
+      { id: 'brian_lara', name: 'Brian Lara', country: 'West Indies', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'left', bowling_style: 'none', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: true, played_ipl: false, world_cup_winner: false, stat_flags: ['400_test_score'] },
+      { id: 'viv_richards', name: 'Vivian Richards', country: 'West Indies', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'right', bowling_style: 'spin', era: 'pre_2000', formats: ['Test', 'ODI'], is_captain: true, played_ipl: false, world_cup_winner: true, stat_flags: ['10k_runs'] },
+      { id: 'chris_gayle', name: 'Chris Gayle', country: 'West Indies', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'left', bowling_style: 'spin', era: '2000s_2010s', formats: ['ODI', 'T20I', 'Test'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['175_ipl_score'] },
+      { id: 'dwayne_bravo', name: 'Dwayne Bravo', country: 'West Indies', gender: 'men', status: 'retired', role: 'all_rounder', batting_hand: 'right', bowling_style: 'pace', era: '2000s_2010s', formats: ['T20I', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['ipl_trophy'] },
+      { id: 'kieron_pollard', name: 'Kieron Pollard', country: 'West Indies', gender: 'men', status: 'retired', role: 'all_rounder', batting_hand: 'right', bowling_style: 'pace', era: '2000s_2010s', formats: ['T20I', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['ipl_trophy'] },
+
+      // --- SOUTH AFRICA (MEN) ---
+      { id: 'ab_de_villiers', name: 'AB de Villiers', country: 'South Africa', gender: 'men', status: 'retired', role: 'batter', batting_hand: 'right', bowling_style: 'none', era: '2000s_2010s', formats: ['Test', 'ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: false, stat_flags: ['31_ball_century', '10k_runs'] },
+      { id: 'jacques_kallis', name: 'Jacques Kallis', country: 'South Africa', gender: 'men', status: 'retired', role: 'all_rounder', batting_hand: 'right', bowling_style: 'pace', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: false, stat_flags: ['10k_runs', '500_wickets'] },
+      { id: 'dale_steyn', name: 'Dale Steyn', country: 'South Africa', gender: 'men', status: 'retired', role: 'bowler', batting_hand: 'right', bowling_style: 'pace', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: false, played_ipl: true, world_cup_winner: false, stat_flags: ['400_wickets'] },
+
+      // --- SRI LANKA (MEN) ---
+      { id: 'muttiah_muralitharan', name: 'Muttiah Muralitharan', country: 'Sri Lanka', gender: 'men', status: 'retired', role: 'bowler', batting_hand: 'right', bowling_style: 'spin', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: false, played_ipl: true, world_cup_winner: true, stat_flags: ['800_test_wickets'] },
+      { id: 'kumar_sangakkara', name: 'Kumar Sangakkara', country: 'Sri Lanka', gender: 'men', status: 'retired', role: 'keeper', batting_hand: 'left', bowling_style: 'none', era: '2000s_2010s', formats: ['Test', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['10k_runs'] },
+      { id: 'lasith_malinga', name: 'Lasith Malinga', country: 'Sri Lanka', gender: 'men', status: 'retired', role: 'bowler', batting_hand: 'right', bowling_style: 'pace', era: '2000s_2010s', formats: ['T20I', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: true, stat_flags: ['ipl_trophy'] },
+
+      // --- NEW ZEALAND (MEN) ---
+      { id: 'kane_williamson', name: 'Kane Williamson', country: 'New Zealand', gender: 'men', status: 'active', role: 'batter', batting_hand: 'right', bowling_style: 'spin', era: 'active_now', formats: ['Test', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: false, stat_flags: ['10k_runs'] },
+      { id: 'brendon_mccullum', name: 'Brendon McCullum', country: 'New Zealand', gender: 'men', status: 'retired', role: 'keeper', batting_hand: 'right', bowling_style: 'none', era: '2000s_2010s', formats: ['Test', 'ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: false, stat_flags: [] },
+      { id: 'trent_boult', name: 'Trent Boult', country: 'New Zealand', gender: 'men', status: 'active', role: 'bowler', batting_hand: 'right', bowling_style: 'pace', era: 'active_now', formats: ['ODI', 'T20I', 'Test'], is_captain: false, played_ipl: true, world_cup_winner: false, stat_flags: ['ipl_trophy'] },
+
+      // --- AFGHANISTAN & BANGLADESH ---
+      { id: 'rashid_khan', name: 'Rashid Khan', country: 'Afghanistan', gender: 'men', status: 'active', role: 'bowler', batting_hand: 'right', bowling_style: 'spin', era: 'active_now', formats: ['T20I', 'ODI'], is_captain: true, played_ipl: true, world_cup_winner: false, stat_flags: ['ipl_trophy'] },
+      { id: 'shakib_al_hasan', name: 'Shakib Al Hasan', country: 'Bangladesh', gender: 'men', status: 'active', role: 'all_rounder', batting_hand: 'left', bowling_style: 'spin', era: 'active_now', formats: ['Test', 'ODI', 'T20I'], is_captain: true, played_ipl: true, world_cup_winner: false, stat_flags: ['10k_runs'] }
+    ];
+
+    let PLAYER_DATABASE = [...BASE_PLAYER_DATABASE];
+    try {
+      const storedCustoms = localStorage.getItem('custom_cricket_players');
+      if (storedCustoms) {
+        const parsed = JSON.parse(storedCustoms);
+        PLAYER_DATABASE = [...PLAYER_DATABASE, ...parsed];
+      }
+    } catch (e) {}
+
+    /* =========================================================
+       ATTRIBUTES & FIXED PRIORITY LIST
+       ========================================================= */
+    const ATTRIBUTE_PRIORITY = [
+      'gender_male',
+      'country_india', 'country_australia', 'country_england', 'country_pakistan', 'country_west_indies', 'country_south_africa', 'country_sri_lanka', 'country_new_zealand',
+      'status_active',
+      'role_batter', 'role_bowler', 'role_allrounder', 'role_keeper',
+      'bowling_pace', 'bowling_spin', 'batting_left',
+      'era_pre2000', 'era_active',
+      'is_captain', 'played_ipl', 'world_cup_winner', 'runs_10k', 'wickets_400'
+    ];
+
+    const ATTRIBUTE_REGISTRY = [
+      { id: 'gender_male', label: 'Male Cricketer', q: 'Is the player a male cricketer?', test: p => p.gender === 'men' },
+      { id: 'status_active', label: 'Still Active', q: 'Is the player currently active in professional/international cricket?', test: p => p.status === 'active' },
+
+      // Countries
+      { id: 'country_india', label: 'Represents India', q: 'Does this player represent India?', test: p => p.country === 'India' },
+      { id: 'country_australia', label: 'Represents Australia', q: 'Does this player represent Australia?', test: p => p.country === 'Australia' },
+      { id: 'country_england', label: 'Represents England', q: 'Does this player represent England?', test: p => p.country === 'England' },
+      { id: 'country_pakistan', label: 'Represents Pakistan', q: 'Does this player represent Pakistan?', test: p => p.country === 'Pakistan' },
+      { id: 'country_west_indies', label: 'Represents West Indies', q: 'Does this player represent the West Indies?', test: p => p.country === 'West Indies' },
+      { id: 'country_south_africa', label: 'Represents South Africa', q: 'Does this player represent South Africa?', test: p => p.country === 'South Africa' },
+      { id: 'country_sri_lanka', label: 'Represents Sri Lanka', q: 'Does this player represent Sri Lanka?', test: p => p.country === 'Sri Lanka' },
+      { id: 'country_new_zealand', label: 'Represents New Zealand', q: 'Does this player represent New Zealand?', test: p => p.country === 'New Zealand' },
+
+      // Roles
+      { id: 'role_batter', label: 'Specialist Batter', q: 'Is the player primarily a specialist batter?', test: p => p.role === 'batter' },
+      { id: 'role_bowler', label: 'Specialist Bowler', q: 'Is the player primarily a specialist bowler?', test: p => p.role === 'bowler' },
+      { id: 'role_allrounder', label: 'All-Rounder', q: 'Is the player an all-rounder?', test: p => p.role === 'all_rounder' },
+      { id: 'role_keeper', label: 'Wicketkeeper', q: 'Is the player a wicketkeeper?', test: p => p.role === 'keeper' },
+
+      // Bowling & Batting Specs
+      { id: 'bowling_pace', label: 'Pace Bowler', q: 'Does the player bowl fast or pace bowling?', test: p => p.bowling_style === 'pace' },
+      { id: 'bowling_spin', label: 'Spin Bowler', q: 'Is the player a spin bowler?', test: p => p.bowling_style === 'spin' },
+      { id: 'batting_left', label: 'Left-handed Batter', q: 'Is the player a left-handed batter?', test: p => p.batting_hand === 'left' },
+
+      // Eras
+      { id: 'era_pre2000', label: 'Pre-2000 Era', q: 'Did the player play predominantly before the year 2000?', test: p => p.era === 'pre_2000' },
+      { id: 'era_active', label: 'Active 2020s Era', q: 'Has the player played extensively in the 2020s?', test: p => p.era === 'active_now' },
+
+      // Key Milestones & Flags
+      { id: 'is_captain', label: 'Captained Country', q: 'Has this player captained their national team in any format?', test: p => p.is_captain === true },
+      { id: 'played_ipl', label: 'IPL / League Player', q: 'Has this player played in the Indian Premier League (IPL) or major global T20 leagues?', test: p => p.played_ipl === true },
+      { id: 'world_cup_winner', label: 'World Cup Winner', q: 'Has this player won an ICC World Cup (ODI or T20)?', test: p => p.world_cup_winner === true },
+      { id: 'runs_10k', label: '10,000+ Runs', q: 'Has this player scored over 10,000 international runs?', test: p => p.stat_flags?.includes('10k_runs') },
+      { id: 'wickets_400', label: '400+ Wickets', q: 'Has this player taken over 400 international wickets?', test: p => p.stat_flags?.includes('400_wickets') || p.stat_flags?.includes('500_wickets') }
+    ];
+
+    /* =========================================================
+       STATE OBJECT & CONFIG
+       ========================================================= */
+    const State = {
+      pool: 'all', // 'all', 'world_cup', 'ipl', 'speed_run', 'legends', 'womens'
+      candidates: [],
+      disqualifiedGuesses: [],
+      history: [],
+      askedAttributes: new Set(),
+      currentAttr: null,
+      questionCount: 0,
+      maxQuestions: 18,
+      soundEnabled: true,
+      settings: {
+        phrasingMode: 'local',
+        geminiKey: ''
+      }
+    };
+
+    /* =========================================================
+       AUDIO SYNTHESIZER
+       ========================================================= */
+    class AudioSynthesizer {
+      constructor() { this.ctx = null; }
+      init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+      playClick() {
+        if (!State.soundEnabled) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.05);
+      }
+      playChime() {
+        if (!State.soundEnabled) return;
+        this.init();
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
+          gain.gain.setValueAtTime(0.15, this.ctx.currentTime + idx * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.08 + 0.3);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(this.ctx.currentTime + idx * 0.08);
+          osc.stop(this.ctx.currentTime + idx * 0.08 + 0.3);
+        });
+      }
+    }
+    const sound = new AudioSynthesizer();
+
+    /* =========================================================
+       CANVAS PARTICLES & CONFETTI
+       ========================================================= */
+    function initParticles() {
+      const canvas = document.getElementById('particle-canvas');
+      const ctx = canvas.getContext('2d');
+      let width = canvas.width = window.innerWidth;
+      let height = canvas.height = window.innerHeight;
+
+      window.addEventListener('resize', () => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+      });
+
+      const particles = Array.from({ length: 45 }, () => ({
+        x: Math.random() * width, y: Math.random() * height,
+        r: Math.random() * 2 + 1, dx: (Math.random() - 0.5) * 0.4, dy: (Math.random() - 0.5) * 0.4,
+        alpha: Math.random() * 0.5 + 0.2
+      }));
+
+      function animate() {
+        ctx.clearRect(0, 0, width, height);
+        particles.forEach(p => {
+          p.x += p.dx; p.y += p.dy;
+          if (p.x < 0) p.x = width; if (p.x > width) p.x = 0;
+          if (p.y < 0) p.y = height; if (p.y > height) p.y = 0;
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(16, 185, 129, ${p.alpha})`; ctx.fill();
+        });
+        requestAnimationFrame(animate);
+      }
+      animate();
+    }
+
+    function triggerConfetti() {
+      const canvas = document.getElementById('confetti-canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+      const pieces = Array.from({ length: 120 }, () => ({
+        x: canvas.width / 2, y: canvas.height / 2,
+        w: Math.random() * 10 + 6, h: Math.random() * 8 + 4,
+        vx: (Math.random() - 0.5) * 18, vy: (Math.random() - 0.7) * 16,
+        color: ['#10b981', '#f59e0b', '#06b6d4', '#a855f7', '#34d399'][Math.floor(Math.random() * 5)],
+        rot: Math.random() * 360, drot: (Math.random() - 0.5) * 8
+      }));
+
+      let startTime = performance.now();
+      function draw(now) {
+        let elapsed = now - startTime;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pieces.forEach(p => {
+          p.x += p.vx; p.y += p.vy; p.vy += 0.35; p.rot += p.drot;
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate((p.rot * Math.PI) / 180);
+          ctx.fillStyle = p.color; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+        });
+        if (elapsed < 3000) requestAnimationFrame(draw);
+        else ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      requestAnimationFrame(draw);
+    }
+
+    /* =========================================================
+       CHANGE 2: PURE LOCAL ARRAY FILTERING & ENTROPY SELECTION
+       ========================================================= */
+    function filterCandidatesLocally(pool, history) {
+      return pool.filter(player => {
+        for (const record of history) {
+          const attrDef = ATTRIBUTE_REGISTRY.find(a => a.id === record.attrId);
+          if (!attrDef) continue;
+          const passesTest = attrDef.test(player);
+
+          if (record.answerVal === 'yes' && !passesTest) return false;
+          if (record.answerVal === 'no' && passesTest) return false;
+          if (record.answerVal === 'probably' && !passesTest && Math.random() < 0.2) return false;
+          if (record.answerVal === 'probably_not' && passesTest && Math.random() < 0.2) return false;
+        }
+        return true;
+      });
+    }
+
+    function selectNextAttributeLocal(candidates, askedAttrSet) {
+      let bestAttr = null;
+      let minDiff = Infinity;
+
+      for (const attrId of ATTRIBUTE_PRIORITY) {
+        if (askedAttrSet.has(attrId)) continue;
+        const attrDef = ATTRIBUTE_REGISTRY.find(a => a.id === attrId);
+        if (!attrDef) continue;
+
+        let trueCount = 0;
+        candidates.forEach(p => { if (attrDef.test(p)) trueCount++; });
+
+        if (trueCount === 0 || trueCount === candidates.length) continue;
+
+        let diff = Math.abs(trueCount - (candidates.length / 2));
+        if (diff < minDiff) {
+          minDiff = diff;
+          bestAttr = attrDef;
+        }
+      }
+
+      if (!bestAttr) {
+        for (const attrDef of ATTRIBUTE_REGISTRY) {
+          if (askedAttrSet.has(attrDef.id)) continue;
+          let trueCount = 0;
+          candidates.forEach(p => { if (attrDef.test(p)) trueCount++; });
+          if (trueCount > 0 && trueCount < candidates.length) {
+            bestAttr = attrDef;
+            break;
+          }
+        }
+      }
+      return bestAttr;
+    }
+
+    /* =========================================================
+       SPECIALIZED GAME MODES CONTROLLER
+       ========================================================= */
+    function getInitialPoolForMode(mode) {
+      if (mode === 'mens') return PLAYER_DATABASE.filter(p => p.gender === 'men');
+      if (mode === 'womens') return PLAYER_DATABASE.filter(p => p.gender === 'women');
+      if (mode === 'legends') return PLAYER_DATABASE.filter(p => p.status === 'retired');
+      if (mode === 'world_cup') return PLAYER_DATABASE.filter(p => p.world_cup_winner === true);
+      if (mode === 'ipl') return PLAYER_DATABASE.filter(p => p.played_ipl === true);
+      return PLAYER_DATABASE; // 'all' and 'speed_run'
+    }
+
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      const target = document.getElementById(`screen-${screenId}`);
+      if (target) target.classList.add('active');
+    }
+
+    function initGame() {
+      State.disqualifiedGuesses = [];
+      State.history = [];
+      State.askedAttributes.clear();
+      State.questionCount = 0;
+
+      // SPEED RUN MODE: Max 10 Questions!
+      State.maxQuestions = (State.pool === 'speed_run') ? 10 : 18;
+
+      let initialPool = getInitialPoolForMode(State.pool);
+      State.candidates = [...initialPool];
+
+      showScreen('game');
+      nextTurn();
+    }
+
+    async function nextTurn() {
+      let basePool = getInitialPoolForMode(State.pool);
+
+      State.candidates = filterCandidatesLocally(basePool, State.history)
+        .filter(p => !State.disqualifiedGuesses.includes(p.id));
+
+      const remainingCount = State.candidates.length;
+
+      document.getElementById('q-counter-badge').textContent = `Question ${State.questionCount + 1} of ~${State.maxQuestions}`;
+      document.getElementById('candidate-count-badge').textContent = `Candidate Pool: ${remainingCount}`;
+      const progressPercent = Math.min(100, (State.questionCount / State.maxQuestions) * 100);
+      document.getElementById('progress-fill').style.width = `${progressPercent}%`;
+      document.getElementById('btn-undo').disabled = (State.history.length === 0);
+
+      if (remainingCount === 0) {
+        showScreen('defeat');
+        return;
+      }
+
+      if (remainingCount <= 3 || State.questionCount >= State.maxQuestions) {
+        triggerGuess(State.candidates[0]);
+        return;
+      }
+
+      const nextAttr = selectNextAttributeLocal(State.candidates, State.askedAttributes);
+
+      if (!nextAttr) {
+        triggerGuess(State.candidates[0]);
+        return;
+      }
+
+      State.currentAttr = nextAttr;
+      State.askedAttributes.add(nextAttr.id);
+
+      let questionText = nextAttr.q;
+      if (State.settings.phrasingMode === 'llm' && State.settings.geminiKey) {
+        questionText = await fetchLLMQuestionPhrasing(nextAttr.label) || nextAttr.q;
+      }
+
+      document.getElementById('question-text').textContent = questionText;
+      updateTelemetryView();
+    }
+
+    function handleAnswer(ansVal) {
+      sound.playClick();
+      State.questionCount++;
+      State.history.push({
+        attrId: State.currentAttr.id,
+        question: State.currentAttr.q,
+        answerVal: ansVal
+      });
+      nextTurn();
+    }
+
+    function undoLastAnswer() {
+      if (State.history.length === 0) return;
+      sound.playClick();
+      const last = State.history.pop();
+      State.askedAttributes.delete(last.attrId);
+      State.questionCount = Math.max(0, State.questionCount - 1);
+      nextTurn();
+    }
+
+    function triggerGuess(player) {
+      document.getElementById('guess-player-name').textContent = player.name;
+      const flagMap = { 'India': '🇮🇳', 'Australia': '🇦🇺', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Pakistan': '🇵🇰', 'West Indies': '🌴', 'South Africa': '🇿🇦', 'Sri Lanka': '🇱🇰', 'New Zealand': '🇳🇿', 'Afghanistan': '🇦🇫', 'Bangladesh': '🇧🇩', 'Zimbabwe': '🇿🇼', 'Ireland': '🇮🇪' };
+      const flag = flagMap[player.country] || '🏏';
+
+      document.getElementById('guess-player-tags').innerHTML = `
+        <span class="meta-tag">${flag} ${player.country}</span>
+        <span class="meta-tag">${player.role.toUpperCase().replace('_', ' ')}</span>
+        <span class="meta-tag">${player.status.toUpperCase()}</span>
+      `;
+      showScreen('guess');
+    }
+
+    function handleGuessResponse(isCorrect) {
+      sound.playClick();
+      if (isCorrect) {
+        sound.playChime();
+        triggerConfetti();
+        document.getElementById('stat-questions-count').textContent = State.questionCount;
+        document.getElementById('stat-final-player').textContent = document.getElementById('guess-player-name').textContent;
+        showScreen('victory');
+      } else {
+        const guessedName = document.getElementById('guess-player-name').textContent;
+        const pObj = PLAYER_DATABASE.find(p => p.name === guessedName);
+        if (pObj) State.disqualifiedGuesses.push(pObj.id);
+
+        showScreen('game');
+        nextTurn();
+      }
+    }
+
+    /* =========================================================
+       OPTIONAL LLM PHRASING
+       ========================================================= */
+    async function fetchLLMQuestionPhrasing(attributeLabel) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${State.settings.geminiKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `Rephrase this cricket question attribute into a natural yes/no question for Akinator: "${attributeLabel}". Output ONLY the question.` }] }],
+            generationConfig: { maxOutputTokens: 40 }
+          })
+        });
+        const data = await res.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function updateTelemetryView() {
+      const viewData = {
+        session_questions_used: State.questionCount,
+        active_mode: State.pool,
+        candidate_pool_size: State.candidates.length,
+        asked_attributes_count: State.askedAttributes.size,
+        disqualified_guesses: State.disqualifiedGuesses,
+        current_attribute: State.currentAttr?.id,
+        token_cost: (State.settings.phrasingMode === 'local') ? '0 Tokens (100% Local Engine)' : '~40 Tokens per turn'
+      };
+      document.getElementById('telemetry-json-view').textContent = JSON.stringify(viewData, null, 2);
+    }
+
+    /* =========================================================
+       PERSIST NEW CUSTOM PLAYERS TO LOCALSTORAGE
+       ========================================================= */
+    function handleAddNewPlayer() {
+      const name = document.getElementById('new-player-name').value.trim();
+      const country = document.getElementById('new-player-country').value;
+      const gender = document.getElementById('new-player-gender').value;
+      const role = document.getElementById('new-player-role').value;
+      const status = document.getElementById('new-player-status').value;
+      const bowling = document.getElementById('new-player-bowling').value;
+
+      if (!name) return;
+
+      const newPlayerObj = {
+        id: name.toLowerCase().replace(/\s+/g, '_'),
+        name: name,
+        country: country,
+        gender: gender,
+        role: role,
+        status: status,
+        batting_hand: 'right',
+        bowling_style: bowling,
+        era: (status === 'active') ? 'active_now' : '2000s_2010s',
+        formats: ['Test', 'ODI', 'T20I'],
+        is_captain: false,
+        played_ipl: true,
+        world_cup_winner: false,
+        stat_flags: []
+      };
+
+      PLAYER_DATABASE.push(newPlayerObj);
+
+      try {
+        const storedCustoms = JSON.parse(localStorage.getItem('custom_cricket_players') || '[]');
+        storedCustoms.push(newPlayerObj);
+        localStorage.setItem('custom_cricket_players', JSON.stringify(storedCustoms));
+      } catch (e) {}
+
+      document.getElementById('add-player-success').style.display = 'block';
+      sound.playChime();
+    }
+
+    /* =========================================================
+       SETTINGS MODAL & EVENT LISTENERS
+       ========================================================= */
+    function loadSavedSettings() {
+      const saved = localStorage.getItem('cricket_akinator_settings_v2');
+      if (saved) {
+        try { State.settings = { ...State.settings, ...JSON.parse(saved) }; } catch (e) {}
+      }
+      updateProviderBadge();
+    }
+
+    function saveSettings() {
+      localStorage.setItem('cricket_akinator_settings_v2', JSON.stringify(State.settings));
+      updateProviderBadge();
+    }
+
+    function updateProviderBadge() {
+      const txt = document.getElementById('provider-name-text');
+      txt.textContent = (State.settings.phrasingMode === 'local') ? 'Engine: 100% Local (0 Tokens)' : 'Engine: LLM Phrasing (~40 Tokens)';
+    }
+
+    function openSettingsModal() {
+      document.getElementById('setting-phrasing-mode').value = State.settings.phrasingMode;
+      document.getElementById('setting-gemini-key').value = State.settings.geminiKey || '';
+      document.getElementById('group-gemini-key').style.display = (State.settings.phrasingMode === 'llm') ? 'block' : 'none';
+      document.getElementById('modal-settings').classList.add('open');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initParticles();
+      loadSavedSettings();
+
+      document.getElementById('brand-logo').addEventListener('click', () => showScreen('setup'));
+      document.getElementById('settings-btn').addEventListener('click', openSettingsModal);
+      document.getElementById('provider-badge').addEventListener('click', openSettingsModal);
+      document.getElementById('btn-close-settings').addEventListener('click', () => {
+        document.getElementById('modal-settings').classList.remove('open');
+      });
+      document.getElementById('btn-save-settings').addEventListener('click', () => {
+        State.settings.phrasingMode = document.getElementById('setting-phrasing-mode').value;
+        State.settings.geminiKey = document.getElementById('setting-gemini-key').value.trim();
+        saveSettings();
+        document.getElementById('modal-settings').classList.remove('open');
+      });
+
+      document.getElementById('setting-phrasing-mode').addEventListener('change', (e) => {
+        document.getElementById('group-gemini-key').style.display = (e.target.value === 'llm') ? 'block' : 'none';
+      });
+
+      document.getElementById('telemetry-btn').addEventListener('click', () => {
+        updateTelemetryView();
+        document.getElementById('modal-telemetry').classList.add('open');
+      });
+      document.getElementById('btn-close-telemetry').addEventListener('click', () => {
+        document.getElementById('modal-telemetry').classList.remove('open');
+      });
+
+      const soundBtn = document.getElementById('sound-btn');
+      soundBtn.addEventListener('click', () => {
+        State.soundEnabled = !State.soundEnabled;
+        soundBtn.textContent = State.soundEnabled ? '🔊' : '🔇';
+      });
+
+      // Pool & Specialized Game Mode Selector
+      document.querySelectorAll('.pool-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          sound.playClick();
+          document.querySelectorAll('.pool-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          State.pool = btn.getAttribute('data-pool');
+        });
+      });
+
+      document.getElementById('start-game-btn').addEventListener('click', () => {
+        sound.playClick();
+        initGame();
+      });
+
+      document.querySelectorAll('.answer-btn').forEach(btn => {
+        btn.addEventListener('click', () => handleAnswer(btn.getAttribute('data-ans')));
+      });
+
+      document.getElementById('btn-undo').addEventListener('click', undoLastAnswer);
+      document.getElementById('btn-restart').addEventListener('click', () => {
+        sound.playClick();
+        showScreen('setup');
+      });
+
+      document.getElementById('btn-guess-yes').addEventListener('click', () => handleGuessResponse(true));
+      document.getElementById('btn-guess-no').addEventListener('click', () => handleGuessResponse(false));
+
+      document.getElementById('btn-play-again-win').addEventListener('click', () => showScreen('setup'));
+      document.getElementById('btn-play-again-defeat').addEventListener('click', () => showScreen('setup'));
+
+      document.getElementById('btn-save-new-player').addEventListener('click', handleAddNewPlayer);
+
+      // Keyboard Shortcuts
+      window.addEventListener('keydown', (e) => {
+        if (document.querySelector('.modal-backdrop.open') || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+
+        if (document.getElementById('screen-game').classList.contains('active')) {
+          const key = e.key.toLowerCase();
+          if (key === '1' || key === 'y') handleAnswer('yes');
+          else if (key === '2' || key === 'p') handleAnswer('probably');
+          else if (key === '3' || key === 'd') handleAnswer('dont_know');
+          else if (key === '4' || key === 'n') handleAnswer('probably_not');
+          else if (key === '5' || key === 'x') handleAnswer('no');
+          else if (key === 'u') undoLastAnswer();
+        } else if (document.getElementById('screen-guess').classList.contains('active')) {
+          const key = e.key.toLowerCase();
+          if (key === '1' || key === 'y') handleGuessResponse(true);
+          else if (key === '2' || key === 'n') handleGuessResponse(false);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
